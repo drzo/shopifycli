@@ -313,7 +313,7 @@ export class PartnersClient implements DeveloperPlatformClient {
     return this.request(AllAppExtensionRegistrationsQuery, variables)
   }
 
-  async appVersions(apiKey: string): Promise<AppVersionsQuerySchema> {
+  async appVersions({apiKey}: OrganizationApp): Promise<AppVersionsQuerySchema> {
     const variables: AppVersionsQueryVariables = {apiKey}
     return this.request(AppVersionsQuery, variables)
   }
