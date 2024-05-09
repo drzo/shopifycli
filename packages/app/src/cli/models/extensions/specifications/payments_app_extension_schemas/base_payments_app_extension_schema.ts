@@ -12,6 +12,7 @@ export interface BasePaymentsAppExtensionDeployConfigType {
   merchant_label: string
   supported_countries: string[]
   supported_payment_methods: string[]
+  supported_buyer_contexts: {currency: string; countries?: string[]}[]
   test_mode_available: boolean
   supports_oversell_protection?: boolean
 }
@@ -25,6 +26,9 @@ export const BasePaymentsAppExtensionSchema = BaseSchema.extend({
 
   supported_countries: zod.array(zod.string()),
   supported_payment_methods: zod.array(zod.string()),
+  supported_buyer_contexts: zod
+    .array(zod.object({currency: zod.string(), countries: zod.array(zod.string()).optional()}))
+    .optional(),
 
   test_mode_available: zod.boolean(),
 

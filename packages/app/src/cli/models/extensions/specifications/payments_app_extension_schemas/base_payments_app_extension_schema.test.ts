@@ -18,6 +18,11 @@ describe('BasePaymentsAppExtensionSchema', () => {
     merchant_label: 'some-label',
     supported_countries: ['CA'],
     supported_payment_methods: ['PAYMENT_METHOD'],
+    supported_buyer_contexts: [
+      {currency: 'USD'},
+      {currency: 'CAD', countries: ['CA']},
+      {currency: 'EUR', countries: ['DE', 'FR']},
+    ],
     test_mode_available: true,
     api_version: '2022-07',
     description: 'my payments app extension',
@@ -56,6 +61,36 @@ describe('BasePaymentsAppExtensionSchema', () => {
         },
       ]),
     )
+  })
+
+  describe('supported_buyer_context', async () => {
+    test('throws an error if currency is not provided', async () => {
+      expect(() =>
+        BasePaymentsAppExtensionSchema.parse({
+          ...config,
+          supported_buyer_contexts: [{countries: ['US']}],
+        }),
+      ).toThrowError(
+        new zod.ZodError([
+          {
+            code: zod.ZodIssueCode.invalid_type,
+            expected: 'string',
+            received: 'undefined',
+            path: ['supported_buyer_contexts', 0, 'currency'],
+            message: 'Required',
+          },
+        ]),
+      )
+    })
+
+    test('is valid if countries are not provided', async () => {
+      const {success} = BasePaymentsAppExtensionSchema.safeParse({
+        ...config,
+        supported_buyer_contexts: [{currency: 'USD'}],
+      })
+
+      expect(success).toBe(true)
+    })
   })
 })
 
