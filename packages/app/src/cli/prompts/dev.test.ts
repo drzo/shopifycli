@@ -115,7 +115,7 @@ describe('selectRun', () => {
     // Then
     expect(got).toEqual(RUN2)
     expect(renderAutocompletePrompt).toHaveBeenCalledWith({
-      message: 'Select a run',
+      message: 'Which run would you like to replay?',
       choices: [
         {label: RUN1.payload.invocationId, value: RUN1},
         {label: RUN2.payload.invocationId, value: RUN2},
