@@ -43,6 +43,7 @@ import {
   Paginateable,
   ActiveAppVersion,
   AppDeployOptions,
+  AppVersionIdentifiers,
 } from '../developer-platform-client.js'
 import {PartnersSession} from '../../../cli/services/context/partner-account-info.js'
 import {
@@ -73,7 +74,7 @@ import {
   DevelopmentStorePreviewUpdateInput,
   DevelopmentStorePreviewUpdateSchema,
 } from '../../api/graphql/development_preview.js'
-import {AppReleaseSchema, AppReleaseVariables} from '../../api/graphql/app_release.js'
+import {AppReleaseSchema} from '../../api/graphql/app_release.js'
 import {AppVersionByTagSchema as AppVersionByTagSchemaInterface} from '../../api/graphql/app_version_by_tag.js'
 import {AppVersionsDiffSchema, AppVersionsDiffVariables} from '../../api/graphql/app_versions_diff.js'
 import {SendSampleWebhookSchema, SendSampleWebhookVariables} from '../../services/webhook/request-sample.js'
@@ -429,7 +430,15 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
   }
 
   async appVersionsDiff(_input: AppVersionsDiffVariables): Promise<AppVersionsDiffSchema> {
-    throw new BugError('Not implemented: appVersionsDiff')
+    return {
+      app: {
+        versionsDiff: {
+          added: [],
+          updated: [],
+          removed: [],
+        },
+      },
+    }
   }
 
   async activeAppVersion({id, organizationId}: MinimalAppIdentifiers): Promise<ActiveAppVersion> {
@@ -534,8 +543,32 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
     return versionResult
   }
 
-  async release(_input: AppReleaseVariables): Promise<AppReleaseSchema> {
-    throw new BugError('Not implemented: release')
+  async release(
+    {id: appId, organizationId}: MinimalOrganizationApp,
+    {versionId}: AppVersionIdentifiers,
+  ): Promise<AppReleaseSchema> {
+    const releaseVariables: ReleaseVersionMutationVariables = {appId, versionId}
+    const releaseResult = await orgScopedShopifyDevelopersRequest<ReleaseVersionMutationSchema>(
+      organizationId,
+      ReleaseVersionMutation,
+      await this.token(),
+      releaseVariables,
+    )
+    return {
+      appRelease: {
+        appVersion: {
+          versionTag: releaseResult.versionRelease.release.version.versionTag,
+          message: '',
+          location: '',
+        },
+        userErrors: releaseResult.versionRelease.userErrors?.map((err) => ({
+          field: err.field,
+          message: err.message,
+          category: '',
+          details: [],
+        })),
+      },
+    }
   }
 
   async storeByDomain(_orgId: string, _shopDomain: string): Promise<FindStoreByDomainSchema> {

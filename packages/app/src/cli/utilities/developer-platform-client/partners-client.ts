@@ -7,6 +7,7 @@ import {
 import {
   ActiveAppVersion,
   AppDeployOptions,
+  AppVersionIdentifiers,
   DeveloperPlatformClient,
   Paginateable,
 } from '../developer-platform-client.js'
@@ -362,7 +363,8 @@ export class PartnersClient implements DeveloperPlatformClient {
     return this.request(AppDeploy, variables)
   }
 
-  async release(input: AppReleaseVariables): Promise<AppReleaseSchema> {
+  async release({apiKey}: MinimalOrganizationApp, {appVersionId}: AppVersionIdentifiers): Promise<AppReleaseSchema> {
+    const input: AppReleaseVariables = {apiKey, appVersionId}
     return this.request(AppRelease, input)
   }
 
