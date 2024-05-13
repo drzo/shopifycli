@@ -18,7 +18,7 @@ const appWebhooksSpec = createConfigExtensionSpecification({
 
 export default appWebhooksSpec
 
-function mergeAllWebhooks(subscriptions: WebhookSubscription[]): WebhookSubscription[] {
+export function mergeAllWebhooks(subscriptions: WebhookSubscription[]): WebhookSubscription[] {
   return subscriptions.reduce((accumulator, subscription) => {
     const existingSubscription = accumulator.find(
       (sub) =>
