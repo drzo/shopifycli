@@ -22,7 +22,6 @@ export function transformToWebhookConfig(content: object) {
   const apiVersion = getPathValue(content, 'api_version') as string
   webhooks = {...(apiVersion ? {webhooks: {api_version: apiVersion}} : {})}
   const serverWebhooks = getPathValue(content, 'subscriptions') as NormalizedWebhookSubscription[]
-
   if (!serverWebhooks) return webhooks
 
   const subscriptions = serverWebhooks.map((subscription) => {
