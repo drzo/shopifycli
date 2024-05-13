@@ -46,10 +46,7 @@ export async function fetchAppRemoteConfiguration(
     specifications,
     flags,
   ) as unknown as SpecsAppConfiguration
-  return specifications.reduce(
-    (simplifiedConfiguration, spec) => spec.simplify?.(simplifiedConfiguration) ?? simplifiedConfiguration,
-    remoteConfiguration,
-  )
+  return remoteConfiguration
 }
 
 export function remoteAppConfigurationExtensionContent(

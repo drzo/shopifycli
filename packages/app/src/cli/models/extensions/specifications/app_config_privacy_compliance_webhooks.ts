@@ -1,4 +1,3 @@
-import {WebhookSimplifyConfig} from './app_config_webhook.js'
 import {WebhookSubscription, WebhooksConfig} from './types/app_config_webhook.js'
 import {WebhooksSchema} from './app_config_webhook_schemas/webhooks_schema.js'
 import {ComplianceTopic} from './app_config_webhook_schemas/webhook_subscription_schema.js'
@@ -19,7 +18,6 @@ const appPrivacyComplienceSpec = createConfigExtensionSpecification({
   identifier: PrivacyComplianceWebhooksSpecIdentifier,
   schema: WebhooksSchema,
   transformConfig: PrivacyComplianceWebhooksTransformConfig,
-  simplify: WebhookSimplifyConfig,
 })
 
 export default appPrivacyComplienceSpec
