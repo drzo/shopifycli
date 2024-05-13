@@ -177,21 +177,33 @@ describe('initializeThemeEditorSync', () => {
       const remoteChecksums = [{checksum: '1', key: 'templates/asset.json'}]
       const updatedRemoteChecksums = [{checksum: '2', key: 'templates/asset.json'}]
       vi.mocked(fetchChecksums).mockResolvedValue(updatedRemoteChecksums)
-      vi.mocked(readThemeFilesFromDisk).mockImplementation(
-        async (_filesToRead: ThemeAsset[], themeFileSystem: ThemeFileSystem) => {
-          themeFileSystem.files.set('templates/asset.json', {checksum: '3', key: 'templates/asset.json'})
+      vi.spyOn(process, 'exit').mockResolvedValue(null as never)
+
+      const localThemeFileSystem: ThemeFileSystem = {
+        root: 'tmp',
+        files,
+        delete: async (assetKey: string) => {
+          files.delete(assetKey)
         },
-      )
+        write: async (asset: ThemeAsset) => {
+          files.set(asset.key, asset)
+        },
+        read: async (assetKey: string) => {
+          files.set(assetKey, {checksum: '3', key: assetKey})
+          return files.get(assetKey)?.value || files.get(assetKey)?.attachment
+        },
+      }
 
       // When
       // Then
       await expect(() =>
-        pollRemoteChanges(developmentTheme, adminSession, remoteChecksums, defaultThemeFileSystem),
+        pollRemoteChanges(developmentTheme, adminSession, remoteChecksums, localThemeFileSystem),
       ).rejects.toThrow(
         new AbortError(
           `Detected changes to the file 'templates/asset.json' on both local and remote sources. Aborting...`,
         ),
       )
+      expect(process.exit).toHaveBeenCalledWith(1)
     })
 
     test('should do nothing when there is a change on local only', async () => {

@@ -1,9 +1,8 @@
 import {uploadTheme} from './theme-uploader.js'
-import {readThemeFilesFromDisk} from './theme-fs.js'
 import {outputDebug, outputInfo} from '@shopify/cli-kit/node/output'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {Checksum, Theme, ThemeAsset, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
-import {renderInfo, renderSelectPrompt} from '@shopify/cli-kit/node/ui'
+import {renderError, renderInfo, renderSelectPrompt} from '@shopify/cli-kit/node/ui'
 import {deleteThemeAsset, fetchChecksums, fetchThemeAsset} from '@shopify/cli-kit/node/themes/api'
 import {AbortError} from '@shopify/cli-kit/node/error'
 
@@ -29,7 +28,9 @@ export async function initializeThemeEditorSync(
   outputDebug('Initiating theme asset reconciliation process')
   await reconcileThemeFiles(targetTheme, session, remoteChecksums, localThemeFileSystem)
 
-  pollThemeEditorChanges(targetTheme, session, localThemeFileSystem)
+  const updatedRemoteChecksums = await fetchChecksums(targetTheme.id, session)
+
+  pollThemeEditorChanges(targetTheme, session, updatedRemoteChecksums, localThemeFileSystem)
 }
 
 async function reconcileThemeFiles(
@@ -204,24 +205,26 @@ async function partitionFilesByReconciliationStrategy(files: {
   return {localFilesToDelete, filesToDownload, filesToUpload, remoteFilesToDelete}
 }
 
-function pollThemeEditorChanges(targetTheme: Theme, session: AdminSession, localThemeFileSystem: ThemeFileSystem) {
+function pollThemeEditorChanges(
+  targetTheme: Theme,
+  session: AdminSession,
+  remoteChecksum: Checksum[],
+  localThemeFileSystem: ThemeFileSystem,
+) {
   outputDebug('Checking for changes in the theme editor')
-  const reconcileThemeChanges = async () => {
-    const currentChecksums = await fetchChecksums(targetTheme.id, session)
-    return reconcileThemeFiles(targetTheme, session, currentChecksums, localThemeFileSystem)
-  }
 
   return setTimeout(() => {
-    reconcileThemeChanges()
-      .then(() => {
-        pollThemeEditorChanges(targetTheme, session, localThemeFileSystem)
+    pollRemoteChanges(targetTheme, session, remoteChecksum, localThemeFileSystem)
+      .then((latestChecksums) => {
+        pollThemeEditorChanges(targetTheme, session, latestChecksums, localThemeFileSystem)
       })
       .catch((error) => {
         outputDebug(`Error while checking for changes in the theme editor: ${error.message}`)
-        pollThemeEditorChanges(targetTheme, session, localThemeFileSystem)
+        pollThemeEditorChanges(targetTheme, session, remoteChecksum, localThemeFileSystem)
       })
   }, POLLING_INTERVAL)
 }
+
 export async function pollRemoteChanges(
   targetTheme: Theme,
   currentSession: AdminSession,
@@ -243,29 +246,47 @@ export async function pollRemoteChanges(
     return latestChecksumsMap.get(previousChecksum.key) === undefined
   })
 
-  await abortIfMultipleSourcesChange(localFileSystem, assetsChangedOnRemote)
+  try {
+    await abortIfMultipleSourcesChange(localFileSystem, assetsChangedOnRemote)
+  } catch (error) {
+    if (error instanceof AbortError) {
+      renderError({body: error.message})
+      process.exit(1)
+    }
+    throw error
+  }
 
   await Promise.all(
     assetsChangedOnRemote.map(async (file) => {
       const asset = await fetchThemeAsset(targetTheme.id, file.key, currentSession)
       if (asset) {
         return localFileSystem.write(asset).then(() => {
-          outputInfo(`Synced ${asset.key} from remote theme`)
+          outputInfo(`Synced: get '${asset.key}' from remote theme`)
         })
       }
     }),
   )
 
-  await Promise.all(assetsDeletedFromRemote.map((file) => localFileSystem.delete(file.key)))
+  await Promise.all(
+    assetsDeletedFromRemote.map((file) =>
+      localFileSystem.delete(file.key).then(() => {
+        outputInfo(`Synced: remove '${file.key}' from local theme`)
+      }),
+    ),
+  )
+  return latestChecksums
 }
 
 async function abortIfMultipleSourcesChange(localFileSystem: ThemeFileSystem, assetsChangedOnRemote: Checksum[]) {
-  const previousLocalFileValues = new Map(localFileSystem.files)
-  await readThemeFilesFromDisk(assetsChangedOnRemote, localFileSystem)
-
-  assetsChangedOnRemote.forEach((asset) => {
-    if (previousLocalFileValues.get(asset.key)?.checksum !== localFileSystem.files.get(asset.key)?.checksum) {
-      throw new AbortError(`Detected changes to the file '${asset.key}' on both local and remote sources. Aborting...`)
+  for (const asset of assetsChangedOnRemote) {
+    const previousChecksum = localFileSystem.files.get(asset.key)?.checksum
+    // eslint-disable-next-line no-await-in-loop
+    await localFileSystem.read(asset.key)
+    const newChecksum = localFileSystem.files.get(asset.key)?.checksum
+    if (previousChecksum !== newChecksum) {
+      throw new AbortError(
+        `Detected changes to the file 'templates/asset.json' on both local and remote sources. Aborting...`,
+      )
     }
-  })
+  }
 }
