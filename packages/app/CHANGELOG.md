@@ -1,5 +1,19 @@
 # @shopify/app
 
+## 3.61.0
+
+### Minor Changes
+
+- 79a951f3c: Allow empty names in config link
+
+### Patch Changes
+
+- Updated dependencies [79a951f3c]
+- Updated dependencies [009a43078]
+  - @shopify/cli-kit@3.61.0
+  - @shopify/create-app@3.61.0
+  - @shopify/plugin-cloudflare@3.61.0
+
 ## 3.60.0
 
 ### Minor Changes

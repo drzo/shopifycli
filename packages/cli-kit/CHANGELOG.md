@@ -1,5 +1,15 @@
 # @shopify/cli-kit
 
+## 3.61.0
+
+### Minor Changes
+
+- 79a951f3c: Allow passing an initial value for TextPrompt
+
+### Patch Changes
+
+- 009a43078: Fix auth for 1p development in Spin
+
 ## 3.60.0
 
 ### Minor Changes

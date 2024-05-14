@@ -1,5 +1,18 @@
 # @shopify/cli
 
+## 3.61.0
+
+### Patch Changes
+
+- Updated dependencies [79a951f3c]
+- Updated dependencies [79a951f3c]
+- Updated dependencies [009a43078]
+  - @shopify/app@3.61.0
+  - @shopify/cli-kit@3.61.0
+  - @shopify/plugin-cloudflare@3.61.0
+  - @shopify/plugin-did-you-mean@3.61.0
+  - @shopify/theme@3.61.0
+
 ## 3.60.0
 
 ### Minor Changes
