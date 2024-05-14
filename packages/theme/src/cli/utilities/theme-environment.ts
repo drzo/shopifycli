@@ -23,7 +23,7 @@ export async function startDevServer(theme: Theme, ctx: DevServerContext, onRead
 async function ensureThemeEnvironmentSetup(theme: Theme, ctx: DevServerContext) {
   if (ctx.themeEditorSync) {
     await initializeThemeEditorSync(theme, ctx.session, ctx.remoteChecksums, ctx.localThemeFileSystem)
-  } else {
-    await uploadTheme(theme, ctx.session, ctx.remoteChecksums, ctx.localThemeFileSystem, {})
   }
+
+  await uploadTheme(theme, ctx.session, ctx.remoteChecksums, ctx.localThemeFileSystem, {})
 }

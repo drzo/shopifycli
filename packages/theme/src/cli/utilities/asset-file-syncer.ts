@@ -1,4 +1,3 @@
-import {uploadTheme} from './theme-uploader.js'
 import {outputDebug, outputInfo} from '@shopify/cli-kit/node/output'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {Checksum, Theme, ThemeAsset, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
@@ -15,7 +14,6 @@ type ReconciliationStrategy = typeof LOCAL_STRATEGY | typeof REMOTE_STRATEGY | u
 interface FilePartitions {
   localFilesToDelete: Checksum[]
   filesToDownload: Checksum[]
-  filesToUpload: Checksum[]
   remoteFilesToDelete: Checksum[]
 }
 
@@ -59,7 +57,7 @@ async function reconcileThemeFiles(
     filesWithConflictingChecksums,
   })
 
-  await performFileReconciliation(targetTheme, session, remoteChecksums, localThemeFileSystem, partitionedFiles)
+  await performFileReconciliation(targetTheme, session, localThemeFileSystem, partitionedFiles)
 }
 
 function identifyFilesToReconcile(
@@ -129,11 +127,10 @@ async function promptFileReconciliationStrategy(
 async function performFileReconciliation(
   targetTheme: Theme,
   session: AdminSession,
-  remoteChecksums: Checksum[],
   localThemeFileSystem: ThemeFileSystem,
   partitionedFiles: FilePartitions,
 ) {
-  const {localFilesToDelete, filesToUpload, filesToDownload, remoteFilesToDelete} = partitionedFiles
+  const {localFilesToDelete, filesToDownload, remoteFilesToDelete} = partitionedFiles
 
   const deleteLocalFiles = localFilesToDelete.map((file) => localThemeFileSystem.delete(file.key))
   const downloadRemoteFiles = filesToDownload.map(async (file) => {
@@ -145,10 +142,6 @@ async function performFileReconciliation(
   const deleteRemoteFiles = remoteFilesToDelete.map((file) => deleteThemeAsset(targetTheme.id, file.key, session))
 
   await Promise.all([...deleteLocalFiles, ...downloadRemoteFiles, ...deleteRemoteFiles])
-
-  if (filesToUpload.length > 0) {
-    await uploadTheme(targetTheme, session, remoteChecksums, localThemeFileSystem, {nodelete: true})
-  }
 }
 
 async function partitionFilesByReconciliationStrategy(files: {
@@ -160,7 +153,6 @@ async function partitionFilesByReconciliationStrategy(files: {
 
   const localFilesToDelete: Checksum[] = []
   const filesToDownload: Checksum[] = []
-  const filesToUpload: Checksum[] = []
   const remoteFilesToDelete: Checksum[] = []
 
   const localFileReconciliationStrategy = await promptFileReconciliationStrategy(filesOnlyPresentLocally, {
@@ -169,9 +161,7 @@ async function partitionFilesByReconciliationStrategy(files: {
     localStrategyLabel: 'Upload local files to the remote theme',
   })
 
-  if (localFileReconciliationStrategy === LOCAL_STRATEGY) {
-    filesToUpload.push(...filesOnlyPresentLocally)
-  } else if (localFileReconciliationStrategy === REMOTE_STRATEGY) {
+  if (localFileReconciliationStrategy === REMOTE_STRATEGY) {
     localFilesToDelete.push(...filesOnlyPresentLocally)
   }
 
@@ -198,11 +188,9 @@ async function partitionFilesByReconciliationStrategy(files: {
 
   if (conflictingChecksumsReconciliationStrategy === REMOTE_STRATEGY) {
     filesToDownload.push(...filesWithConflictingChecksums)
-  } else {
-    filesToUpload.push(...filesWithConflictingChecksums)
   }
 
-  return {localFilesToDelete, filesToDownload, filesToUpload, remoteFilesToDelete}
+  return {localFilesToDelete, filesToDownload, remoteFilesToDelete}
 }
 
 function pollThemeEditorChanges(

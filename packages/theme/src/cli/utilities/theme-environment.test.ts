@@ -42,6 +42,6 @@ describe('startDevServer', () => {
 
     // Then
     expect(initializeThemeEditorSync).toHaveBeenCalled()
-    expect(uploadTheme).not.toHaveBeenCalled()
+    expect(uploadTheme).toHaveBeenCalled()
   })
 })

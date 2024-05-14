@@ -1,5 +1,4 @@
 import {LOCAL_STRATEGY, REMOTE_STRATEGY, initializeThemeEditorSync, pollRemoteChanges} from './asset-file-syncer.js'
-import {uploadTheme} from './theme-uploader.js'
 import {fakeThemeFileSystem} from './theme-fs/theme-fs-mock-factory.js'
 import {readThemeFilesFromDisk} from './theme-fs.js'
 import {deleteThemeAsset, fetchChecksums, fetchThemeAsset} from '@shopify/cli-kit/node/themes/api'
@@ -24,7 +23,7 @@ describe('initializeThemeEditorSync', () => {
   const defaultThemeFileSystem = fakeThemeFileSystem('tmp', files)
 
   describe('files only present on remote developer theme', () => {
-    test('should download assets from remote theme if themeEditorSync flag is passed and `remote` source is selected', async () => {
+    test('should download assets from remote theme when `remote` source is selected', async () => {
       // Given
       vi.mocked(renderSelectPrompt).mockResolvedValue(REMOTE_STRATEGY)
       const assetToBeDownloaded = {checksum: '2', key: 'templates/second_asset.json', value: 'content'}
@@ -41,7 +40,7 @@ describe('initializeThemeEditorSync', () => {
       expect(defaultThemeFileSystem.files.get('templates/second_asset.json')).toEqual(assetToBeDownloaded)
     })
 
-    test('should delete assets from local disk if themeEditorSync flag is passed and `local` source is selected', async () => {
+    test('should delete assets from local disk when `local` source is selected', async () => {
       // Given
       vi.mocked(renderSelectPrompt).mockResolvedValue(LOCAL_STRATEGY)
       const assetToBeDeleted = {checksum: '2', key: 'templates/asset.json'}
@@ -57,7 +56,7 @@ describe('initializeThemeEditorSync', () => {
   })
 
   describe('files only present on local developer theme', () => {
-    test('should delete files from local disk if themeEditorSync flag is passed and `remote` source is selected', async () => {
+    test('should delete files from local disk when `remote` source is selected', async () => {
       // Given
       vi.mocked(renderSelectPrompt).mockResolvedValue(REMOTE_STRATEGY)
       const files = new Map([['templates/asset.json', {checksum: '1', key: 'templates/asset.json'}]])
@@ -69,10 +68,9 @@ describe('initializeThemeEditorSync', () => {
 
       // Then
       expect(spy).toHaveBeenCalledWith('templates/asset.json')
-      expect(uploadTheme).not.toHaveBeenCalled()
     })
 
-    test('should upload files to remote theme if themeEditorSync flag is passed and `local` source is selected', async () => {
+    test('should not delete files from local disk when `local` source is selected', async () => {
       // Given
       vi.mocked(renderSelectPrompt).mockResolvedValue(LOCAL_STRATEGY)
       const files = new Map([['templates/asset.json', {checksum: '1', key: 'templates/asset.json'}]])
@@ -84,14 +82,11 @@ describe('initializeThemeEditorSync', () => {
 
       // Then
       expect(spy).not.toHaveBeenCalled()
-      expect(uploadTheme).toHaveBeenCalledWith(developmentTheme, adminSession, remoteChecksums, localThemeFileSystem, {
-        nodelete: true,
-      })
     })
   })
 
   describe('files with conflicting checksums', () => {
-    test('should download files from remote theme if themeEditorSync flag is passed and `remote` source is selected', async () => {
+    test('should download files from remote theme when `remote` source is selected', async () => {
       // Given
       vi.mocked(renderSelectPrompt).mockResolvedValue(REMOTE_STRATEGY)
       const files = new Map([['templates/asset.json', {checksum: '1', key: 'templates/asset.json'}]])
@@ -102,11 +97,10 @@ describe('initializeThemeEditorSync', () => {
       await initializeThemeEditorSync(developmentTheme, adminSession, remoteChecksums, localThemeFileSystem)
 
       // Then
-      expect(uploadTheme).not.toHaveBeenCalled()
       expect(fetchThemeAsset).toHaveBeenCalled()
     })
 
-    test('should upload files from local disk if themeEditorSync flag is passed and `local` source is selected', async () => {
+    test('should not download files from remote when `local` source is selected', async () => {
       // Given
       vi.mocked(renderSelectPrompt).mockResolvedValue(LOCAL_STRATEGY)
       const files = new Map([['templates/asset.json', {checksum: '1', key: 'templates/asset.json'}]])
@@ -117,7 +111,6 @@ describe('initializeThemeEditorSync', () => {
       await initializeThemeEditorSync(developmentTheme, adminSession, remoteChecksums, localThemeFileSystem)
 
       // Then
-      expect(uploadTheme).toHaveBeenCalled()
       expect(fetchThemeAsset).not.toHaveBeenCalled()
     })
   })
