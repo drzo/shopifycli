@@ -1,7 +1,7 @@
 import {outputDebug, outputInfo} from '@shopify/cli-kit/node/output'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {Checksum, Theme, ThemeAsset, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
-import {renderError, renderInfo, renderSelectPrompt} from '@shopify/cli-kit/node/ui'
+import {renderError, renderInfo, renderSelectPrompt, renderSuccess} from '@shopify/cli-kit/node/ui'
 import {deleteThemeAsset, fetchChecksums, fetchThemeAsset} from '@shopify/cli-kit/node/themes/api'
 import {AbortError} from '@shopify/cli-kit/node/error'
 
@@ -153,7 +153,14 @@ async function performFileReconciliation(
   })
   const deleteRemoteFiles = remoteFilesToDelete.map((file) => deleteThemeAsset(targetTheme.id, file.key, session))
 
+  if (downloadRemoteFiles.length > 0 || deleteRemoteFiles.length > 0) {
+    renderInfo({
+      body: 'Starting file synchronization. This may take a while if there are many or large files to download...',
+    })
+  }
+
   await Promise.all([...deleteLocalFiles, ...downloadRemoteFiles, ...deleteRemoteFiles])
+  renderSuccess({body: 'File synchronization complete'})
 }
 
 async function partitionFilesByReconciliationStrategy(files: {
@@ -229,7 +236,7 @@ function pollThemeEditorChanges(
   remoteChecksum: Checksum[],
   localThemeFileSystem: ThemeFileSystem,
 ) {
-  outputDebug('Checking for changes in the theme editor')
+  outputDebug('Listening for changes in the theme editor')
 
   return setTimeout(() => {
     pollRemoteChanges(targetTheme, session, remoteChecksum, localThemeFileSystem)
