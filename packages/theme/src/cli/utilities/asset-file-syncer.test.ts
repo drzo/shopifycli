@@ -196,7 +196,6 @@ describe('initializeThemeEditorSync', () => {
           `Detected changes to the file 'templates/asset.json' on both local and remote sources. Aborting...`,
         ),
       )
-      expect(process.exit).toHaveBeenCalledWith(1)
     })
 
     test('should do nothing when there is a change on local only', async () => {

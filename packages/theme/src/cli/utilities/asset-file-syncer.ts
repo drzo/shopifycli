@@ -1,9 +1,9 @@
 import {outputDebug, outputInfo} from '@shopify/cli-kit/node/output'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {Checksum, Theme, ThemeAsset, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
-import {renderError, renderInfo, renderSelectPrompt, renderSuccess} from '@shopify/cli-kit/node/ui'
+import {renderError, renderInfo, renderSelectPrompt} from '@shopify/cli-kit/node/ui'
 import {deleteThemeAsset, fetchChecksums, fetchThemeAsset} from '@shopify/cli-kit/node/themes/api'
-import {AbortError} from '@shopify/cli-kit/node/error'
+import {AbortError, AbortSilentError} from '@shopify/cli-kit/node/error'
 
 const POLLING_INTERVAL = 3000
 export const LOCAL_STRATEGY = 'local'
@@ -160,7 +160,6 @@ async function performFileReconciliation(
   }
 
   await Promise.all([...deleteLocalFiles, ...downloadRemoteFiles, ...deleteRemoteFiles])
-  renderSuccess({body: 'File synchronization complete'})
 }
 
 async function partitionFilesByReconciliationStrategy(files: {
@@ -244,6 +243,10 @@ function pollThemeEditorChanges(
         pollThemeEditorChanges(targetTheme, session, latestChecksums, localThemeFileSystem)
       })
       .catch((error) => {
+        if (error instanceof AbortError) {
+          renderError({body: error.message})
+          throw new AbortSilentError()
+        }
         outputDebug(`Error while checking for changes in the theme editor: ${error.message}`)
         pollThemeEditorChanges(targetTheme, session, remoteChecksum, localThemeFileSystem)
       })
@@ -271,15 +274,7 @@ export async function pollRemoteChanges(
     return latestChecksumsMap.get(previousChecksum.key) === undefined
   })
 
-  try {
-    await abortIfMultipleSourcesChange(localFileSystem, assetsChangedOnRemote)
-  } catch (error) {
-    if (error instanceof AbortError) {
-      renderError({body: error.message})
-      process.exit(1)
-    }
-    throw error
-  }
+  await abortIfMultipleSourcesChange(localFileSystem, assetsChangedOnRemote)
 
   await Promise.all(
     assetsChangedOnRemote.map(async (file) => {
