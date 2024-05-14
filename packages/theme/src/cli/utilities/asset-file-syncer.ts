@@ -96,10 +96,16 @@ function identifyFilesToReconcile(
 
 async function promptFileReconciliationStrategy(
   files: Checksum[],
-  message: {
-    title: string
-    remoteStrategyLabel: string
-    localStrategyLabel: string
+  title: string,
+  options: {
+    remote: {
+      label: string
+      callback: (files: Checksum[]) => void
+    }
+    local: {
+      label: string
+      callback: (files: Checksum[]) => void
+    }
   },
 ): Promise<ReconciliationStrategy | undefined> {
   if (files.length === 0) {
@@ -109,19 +115,25 @@ async function promptFileReconciliationStrategy(
   renderInfo({
     body: {
       list: {
-        title: message.title,
+        title,
         items: files.map((file) => file.key),
       },
     },
   })
 
-  return renderSelectPrompt({
+  const selectedStrategy = await renderSelectPrompt({
     message: 'Reconciliation Strategy',
     choices: [
-      {label: message.remoteStrategyLabel, value: REMOTE_STRATEGY},
-      {label: message.localStrategyLabel, value: LOCAL_STRATEGY},
+      {label: options.remote.label, value: REMOTE_STRATEGY},
+      {label: options.local.label, value: LOCAL_STRATEGY},
     ],
   })
+
+  if (selectedStrategy === REMOTE_STRATEGY) {
+    options.remote.callback(files)
+  } else {
+    options.local.callback(files)
+  }
 }
 
 async function performFileReconciliation(
@@ -155,40 +167,58 @@ async function partitionFilesByReconciliationStrategy(files: {
   const filesToDownload: Checksum[] = []
   const remoteFilesToDelete: Checksum[] = []
 
-  const localFileReconciliationStrategy = await promptFileReconciliationStrategy(filesOnlyPresentLocally, {
-    title: 'The files listed below are only present locally. What would you like to do?',
-    remoteStrategyLabel: 'Delete files from the local directory',
-    localStrategyLabel: 'Upload local files to the remote theme',
-  })
-
-  if (localFileReconciliationStrategy === REMOTE_STRATEGY) {
-    localFilesToDelete.push(...filesOnlyPresentLocally)
-  }
-
-  const remoteFileReconciliationStrategy = await promptFileReconciliationStrategy(filesOnlyPresentOnRemote, {
-    title: 'The files listed below are only present on the remote theme. What would you like to do?',
-    remoteStrategyLabel: 'Download remote files to the local directory',
-    localStrategyLabel: 'Delete files from the remote theme',
-  })
-
-  if (remoteFileReconciliationStrategy === REMOTE_STRATEGY) {
-    filesToDownload.push(...filesOnlyPresentOnRemote)
-  } else if (remoteFileReconciliationStrategy === LOCAL_STRATEGY) {
-    remoteFilesToDelete.push(...filesOnlyPresentOnRemote)
-  }
-
-  const conflictingChecksumsReconciliationStrategy = await promptFileReconciliationStrategy(
-    filesWithConflictingChecksums,
+  await promptFileReconciliationStrategy(
+    filesOnlyPresentLocally,
+    'The files listed below are only present locally. What would you like to do?',
     {
-      title: 'The files listed below differ between the local and remote versions. What would you like to do?',
-      remoteStrategyLabel: 'Keep the remote version',
-      localStrategyLabel: 'Keep the local version',
+      remote: {
+        label: 'Delete files from the local directory',
+        callback: (files) => {
+          localFilesToDelete.push(...files)
+        },
+      },
+      local: {
+        label: 'Upload local files to the remote theme',
+        callback: () => {},
+      },
     },
   )
 
-  if (conflictingChecksumsReconciliationStrategy === REMOTE_STRATEGY) {
-    filesToDownload.push(...filesWithConflictingChecksums)
-  }
+  await promptFileReconciliationStrategy(
+    filesOnlyPresentOnRemote,
+    'The files listed below are only present on the remote theme. What would you like to do?',
+    {
+      remote: {
+        label: 'Download remote files to the local directory',
+        callback: (files) => {
+          filesToDownload.push(...files)
+        },
+      },
+      local: {
+        label: 'Delete files from the remote theme',
+        callback: (files) => {
+          remoteFilesToDelete.push(...files)
+        },
+      },
+    },
+  )
+
+  await promptFileReconciliationStrategy(
+    filesWithConflictingChecksums,
+    'The files listed below differ between the local and remote versions. What would you like to do?',
+    {
+      remote: {
+        label: 'Keep the remote version',
+        callback: (files) => {
+          filesToDownload.push(...files)
+        },
+      },
+      local: {
+        label: 'Keep the local version',
+        callback: () => {},
+      },
+    },
+  )
 
   return {localFilesToDelete, filesToDownload, remoteFilesToDelete}
 }
