@@ -34,7 +34,7 @@ export function transformToWebhookConfig(content: object) {
   return deepMergeObjects(webhooks, {webhooks: webhooksSubscriptionsObject})
 }
 
-function mergeAllWebhooks(subscriptions: WebhookSubscription[]): WebhookSubscription[] {
+export function mergeAllWebhooks(subscriptions: WebhookSubscription[]): WebhookSubscription[] {
   return subscriptions.reduce((accumulator, subscription) => {
     const existingSubscription = accumulator.find(
       (sub) =>
