@@ -23,12 +23,12 @@ const WebhooksConfigSchema = zod
       const {topics = [], compliance_topics = [], ...otherFields} = subscription
       const nonComplianceTopics = topics
         ? topics.map((topic) => {
-            return {topics: [topic], compliance_topics: undefined, ...otherFields}
+            return {topics: [topic], ...otherFields}
           })
         : []
       const complianceTopics = compliance_topics
         ? compliance_topics.map((complianceTopic) => {
-            return {topics: undefined, compliance_topics: [complianceTopic], ...otherFields}
+            return {compliance_topics: [complianceTopic], ...otherFields}
           })
         : []
       return [...nonComplianceTopics, ...complianceTopics]
