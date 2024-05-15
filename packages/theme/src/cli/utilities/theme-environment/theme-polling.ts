@@ -3,6 +3,7 @@ import {fetchChecksums, fetchThemeAsset} from '@shopify/cli-kit/node/themes/api'
 import {outputDebug, outputInfo} from '@shopify/cli-kit/node/output'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {AbortError, FatalError} from '@shopify/cli-kit/node/error'
+import {renderWarning} from '@shopify/cli-kit/node/ui'
 
 const POLLING_INTERVAL = 3000
 
@@ -23,7 +24,7 @@ export function pollThemeEditorChanges(
         if (error instanceof FatalError) {
           throw error
         }
-        outputDebug(`Error while checking for changes in the theme editor: ${error.message}`)
+        renderWarning({body: `Error while checking for changes in the theme editor: ${error.message}`})
         pollThemeEditorChanges(targetTheme, session, remoteChecksum, localThemeFileSystem)
       })
   }, POLLING_INTERVAL)
