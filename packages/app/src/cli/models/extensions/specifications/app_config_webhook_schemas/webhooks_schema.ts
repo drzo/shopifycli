@@ -19,13 +19,25 @@ const WebhooksConfigSchema = zod
   .transform((value) => {
     // Transform subscriptions from condensed state to expanded state (only 1 topic per subscription)
     const expandedSubscriptions = value.subscriptions?.flatMap((subscription) => {
-      const {topics = [], ...otherFields} = subscription
-      if (topics.length === 0) return subscription
-      return topics.map((topic) => {
-        return {topics: [topic], ...otherFields}
-      })
+      // eslint-disable-next-line @typescript-eslint/naming-convention
+      const {topics = [], compliance_topics = [], ...otherFields} = subscription
+      const nonComplianceTopics = topics
+        ? topics.map((topic) => {
+            return {topics: [topic], compliance_topics: undefined, ...otherFields}
+          })
+        : []
+      const complianceTopics = compliance_topics
+        ? compliance_topics.map((complianceTopic) => {
+            return {topics: undefined, compliance_topics: [complianceTopic], ...otherFields}
+          })
+        : []
+      return [...nonComplianceTopics, ...complianceTopics]
     })
-    return {...value, subscriptions: expandedSubscriptions}
+
+    return {
+      ...value,
+      subscriptions: expandedSubscriptions,
+    }
   })
 
 export type SingleWebhookSubscriptionType = zod.infer<typeof SingleWebhookSubscriptionSchema>
