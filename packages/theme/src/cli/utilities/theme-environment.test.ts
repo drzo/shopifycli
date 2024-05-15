@@ -1,6 +1,7 @@
 import {uploadTheme} from './theme-uploader.js'
-import {DevServerContext, startDevServer} from './theme-environment.js'
+import {startDevServer} from './theme-environment.js'
 import {initializeThemeEditorSync} from './asset-file-syncer.js'
+import {DevServerContext} from './theme-environment/types.js'
 import {DEVELOPMENT_THEME_ROLE} from '@shopify/cli-kit/node/themes/utils'
 import {describe, expect, test, vi} from 'vitest'
 import {buildTheme} from '@shopify/cli-kit/node/themes/factories'
@@ -16,7 +17,7 @@ describe('startDevServer', () => {
     files: new Map([['templates/asset.json', {checksum: '1', key: 'templates/asset.json'}]]),
   } as ThemeFileSystem
   const defaultServerContext: DevServerContext = {
-    session: {storefrontToken: '', token: '', storeFqdn: ''},
+    session: {storefrontToken: '', token: '', storeFqdn: '', expiresAt: new Date()},
     remoteChecksums: [],
     localThemeFileSystem,
     themeEditorSync: false,

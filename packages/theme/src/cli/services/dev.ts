@@ -1,6 +1,7 @@
 import {hasRequiredThemeDirectories, mountThemeFileSystem} from '../utilities/theme-fs.js'
 import {currentDirectoryConfirmed} from '../utilities/theme-ui.js'
-import {DevServerSession, startDevServer} from '../utilities/theme-environment.js'
+import {startDevServer} from '../utilities/theme-environment.js'
+import {DevServerSession} from '../utilities/theme-environment/types.js'
 import {renderSuccess, renderWarning} from '@shopify/cli-kit/node/ui'
 import {AdminSession, ensureAuthenticatedStorefront, ensureAuthenticatedThemes} from '@shopify/cli-kit/node/session'
 import {execCLI2} from '@shopify/cli-kit/node/ruby'
@@ -32,37 +33,41 @@ interface DevOptions {
 }
 
 export async function dev(options: DevOptions) {
+  if (!options['dev-preview']) {
+    await legacyRubyDev(options)
+    return
+  }
+
+  outputInfo('This feature is currently in development and is not ready for use or testing yet.')
+
   if (!(await hasRequiredThemeDirectories(options.directory)) && !(await currentDirectoryConfirmed(options.force))) {
     return
   }
 
-  if (options['dev-preview']) {
-    outputInfo('This feature is currently in development and is not ready for use or testing yet.')
+  const remoteChecksums = await fetchChecksums(options.theme.id, options.adminSession)
+  const localThemeFileSystem = await mountThemeFileSystem(options.directory)
+  const session: DevServerSession = {
+    ...options.adminSession,
+    storefrontToken: options.storefrontToken,
+    expiresAt: new Date(),
+  }
+  const ctx = {
+    session,
+    remoteChecksums,
+    localThemeFileSystem,
+    themeEditorSync: options['theme-editor-sync'],
+  }
 
-    const remoteChecksums = await fetchChecksums(options.theme.id, options.adminSession)
-    const localThemeFileSystem = await mountThemeFileSystem(options.directory)
-    const session: DevServerSession = {
-      ...options.adminSession,
-      storefrontToken: options.storefrontToken,
-    }
-    const ctx = {
-      session,
-      remoteChecksums,
-      localThemeFileSystem,
-      themeEditorSync: options['theme-editor-sync'],
-    }
+  await startDevServer(options.theme, ctx, () => {
+    renderLinks(options.store, options.theme.id.toString(), options.host, options.port)
+  })
+}
 
-    await startDevServer(options.theme, ctx, () => {
-      renderLinks(options.store, options.theme.id.toString(), options.host, options.port)
-    })
-
+async function legacyRubyDev(options: DevOptions) {
+  if (!(await hasRequiredThemeDirectories(options.directory)) && !(await currentDirectoryConfirmed(options.force))) {
     return
   }
 
-  await legacyDev(options)
-}
-
-async function legacyDev(options: DevOptions) {
   let adminToken: string | undefined = options.adminSession.token
   let storefrontToken: string | undefined = options.storefrontToken
 
